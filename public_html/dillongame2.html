@@ -91,8 +91,8 @@
 		}
 		this.width = width;
 		this.height = height;
-		this.speedX= 0;
-		this.speedY = 0;
+		this.accelX= 0;
+		this.accelY = 0;
 		this.x = x;
 		this.y = y;    
 		this.gravity = 0.06;
@@ -116,10 +116,11 @@
 			}
 		};
 		
-		this.newPos=function() {
+		//Referenced from https://www.w3schools.com/graphics/game_gravity.asp. {
+		this.gravityFx=function() {
 			this.gravitySpeed += this.gravity;
-			this.x += this.speedX;
-			this.y += this.speedY + this.gravitySpeed;
+			this.x += this.accelX;
+			this.y += this.accelY + this.gravitySpeed;
 			this.hitBottom();
 			if(this.type == "background") {
 				if(this.x == -(this.width)) {
@@ -134,21 +135,22 @@
 				this.y = bottom;
 			}
 		};
+		//}
 		
-		this.crashWith = function(otherobj) {
+		this.collision = function(enemy) {
 			var myleft = this.x;
 			var myright = this.x + (this.width);
 			var mytop = this.y;
 			var mybottom = this.y + (this.height);
-			var otherleft = otherobj.x+10;
-			var otherright = otherobj.x + (otherobj.width)-10;
-			var othertop = otherobj.y+10;
-			var otherbottom = otherobj.y + (otherobj.height)-10;
-			var crash = true;
+			var otherleft = enemy.x+10;
+			var otherright = enemy.x + (enemy.width)-10;
+			var othertop = enemy.y+10;
+			var otherbottom = enemy.y + (enemy.height)-10;
+			var collide = true;
 			if ((mybottom < othertop) || (mytop > otherbottom) || (myright < otherleft) || (myleft > otherright)) {
-				crash = false;
+				collide = false;
 			}
-			return crash;
+			return collide;
 		};
 				
 	}
@@ -156,7 +158,7 @@
 	function updateGameArea() {
 		var x;
 		for(var i = 0; i < groundEnemies.length; i+=1){
-			if(hero.crashWith(groundEnemies[i])) {
+			if(hero.collision(groundEnemies[i])) {
 				if(explodeBool == true){
 					playExplosion();
 				}
@@ -168,7 +170,7 @@
 			}
 		}
 		for(var i = 0; i < flyEnemies.length; i+=1){
-			if(hero.crashWith(flyEnemies[i])) {
+			if(hero.collision(flyEnemies[i])) {
 				if(explodeBool == true){
 					playExplosion();
 				}
@@ -180,7 +182,7 @@
 			}
 		}
 		for(var i = 0; i < bombs.length; i+=1){
-			if(hero.crashWith(bombs[i])) {
+			if(hero.collision(bombs[i])) {
 				if(explodeBool == true){
 					playExplosion();
 				}
@@ -200,28 +202,25 @@
 			return;
 		}
 		clear();
+		
 		if(keys && keys[39]){
-			background.speedX = -1;
+			background.accelX = -1;
 		}
-		else {background.speedX = 0;}
-		
-		
-		
-		background.newPos();
+		else {background.accelX = 0;}	
+		background.gravityFx();
 		background.update();
+		
 		frameNo += 1;
 		spawngroundEnemies();
 		spawnFlyEnemies();
 		spawnBombs();
-		hero.speedX = 0;
-		hero.speedY = 0;
+		hero.accelX = 0;
+		hero.accelY = 0;
 		if(keys && keys[37]) {moveLeft();}
 		if(keys && keys[39]) {moveRight();}
-		if(keys && keys[38] && hero.y > 217) {jump();}
-		hero.newPos();
+		if(keys && keys[38] && hero.y > 225) {jump();}
+		hero.gravityFx();
 		hero.update();
-		
-		
     
 	}
 	
@@ -233,16 +232,16 @@
 	
 	function moveLeft() {
 		if(hero.x  <= 0){
-			hero.speedX = 0;
+			hero.accelX = 0;
 		}
 		else{
-			hero.speedX -= 2;}
+			hero.accelX -= 2;}
 	}
 	
 	function moveRight(){
 		if (hero.x < 240)
-			hero.speedX += 3;
-		else hero.speedX += 2;
+			hero.accelX += 3;
+		else hero.accelX += 2;
 	}
 	
 	function spawngroundEnemies(){
