@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+#canvas {
+  
+   padding-right:0;
+   padding-left:0;
+   margin-left:auto;
+   margin-bottom:auto;
+   margin-top:auto;
+   margin-right:auto;
+   display:block;
+}
+
+#gameInfo {
+	text-align:center;
+}
+</style>
+</head>
+<body onload = "preload()">
+<canvas id = "canvas" height="270" width="960"> </canvas>
+<audio id = "jump">
+	<source src ="Jump.wav" type ="audio/wav">
+</audio>
+<audio id="lose">
+	<source src ="Explosion.wav" type = "audio/wav">
+</audio>
+<audio id = "win">
+	<source src = "win.wav" type = "audio/wav">
+</audio>
+
+ <div id="gameInfo"> <p>	Use arrow keys to move and jump.  Reach the end without hitting any obstacles. </div> 
+
+<script>
+	var canvas = document.getElementById("canvas");
+	var ctx = canvas.getContext("2d");
+	document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+	
+	var jumpSound = document.getElementById("jump");
+	var explosion = document.getElementById("lose");
+	var win = document.getElementById("win");
+	var explodeBool = true;
+	var winBool = true;
+	
+	
+	var hero;
+	var background;
+	var groundEnemies=[];
+	var flyEnemies=[];
+	var bombs=[];
+	var text;
+	var countgroundEnemies = -1;
+	var countFlyEnemies = -1;
+	var deathCounter = 0;
+
+	var frameNo = 0;
+	var interval = setInterval(updateGameArea,20);
+	var keys;
+
+	window.addEventListener('keydown', function (e) {
+		keys = (keys || []);
+		keys[e.keyCode] = true;
+	});
+	window.addEventListener('keyup', function (e) {
+		keys[e.keyCode] = false;
+	});
+	
+	
+	function preload() {
+		hero= new object(30, 40, "hero.png", 10, 200, "image"); 
+		text = new object("20px", "Courier New", "black", 280, 40, "text");
+		deaths = new object("18px", "Times New Roman", "black", 20, 20, "text");
+		background = new object(960, 270, "background.jpg", 0, 0, "background");
+		start();
+	}
+	
+	function start() {
+		setInterval(updateGameArea, 20);
+	}
+	
+	function clear() {
+		ctx.clearRect(0,0, canvas.width, canvas.height);
+	}
+	
+	function object(width, height, source, x, y, type){
+		this.type = type;
+		if(type == "image" || type == "background" ) {
+			this.image = new Image();
+			this.image.src = source;
+		}
+		this.width = width;
+		this.height = height;
+		this.speedX= 0;
+		this.speedY = 0;
+		this.x = x;
+		this.y = y;    
+		this.gravity = 0.06;
+		this.gravitySpeed = 0;
+		
+		this.update=function(){
+			if(type == "image" || type == "background") {
+				ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+				if(type == "background") {
+					ctx.drawImage(this.image, this.x + this.width, this.y, this.width, this.height);
+				}
+			}
+			else if (this.type == "text"){
+				ctx.font = this.width + " " + this.height;
+				ctx.fillStyle = source;
+				ctx.fillText(this.text, this.x, this.y);
+			}
+			else {
+				ctx.fillStyle = source;
+				ctx.fillRect(this.x, this.y, this.width, this.height);
+			}
+		};
+		
+		this.newPos=function() {
+			this.gravitySpeed += this.gravity;
+			this.x += this.speedX;
+			this.y += this.speedY + this.gravitySpeed;
+			this.hitBottom();
+			if(this.type == "background") {
+				if(this.x == -(this.width)) {
+					this.x=0;
+				}
+			}
+		};
+		
+		this.hitBottom = function() {
+			var bottom = canvas.height - this.height;
+			if(this.y > bottom) {
+				this.y = bottom;
+			}
+		};
+		
+		this.crashWith = function(otherobj) {
+			var myleft = this.x;
+			var myright = this.x + (this.width);
+			var mytop = this.y;
+			var mybottom = this.y + (this.height);
+			var otherleft = otherobj.x+10;
+			var otherright = otherobj.x + (otherobj.width)-10;
+			var othertop = otherobj.y+10;
+			var otherbottom = otherobj.y + (otherobj.height)-10;
+			var crash = true;
+			if ((mybottom < othertop) || (mytop > otherbottom) || (myright < otherleft) || (myleft > otherright)) {
+				crash = false;
+			}
+			return crash;
+		};
+				
+	}
+	
+	function updateGameArea() {
+		var x;
+		for(var i = 0; i < groundEnemies.length; i+=1){
+			if(hero.crashWith(groundEnemies[i])) {
+				if(explodeBool == true){
+					playExplosion();
+				}
+				clearInterval(interval);
+				text.text="You Lose.  Press space to restart.";
+				text.update();
+				restart();
+				return;
+			}
+		}
+		for(var i = 0; i < flyEnemies.length; i+=1){
+			if(hero.crashWith(flyEnemies[i])) {
+				if(explodeBool == true){
+					playExplosion();
+				}
+				clearInterval(interval);
+				text.text="You Lose.  Press space to restart.";
+				text.update();
+				restart();
+				return;
+			}
+		}
+		for(var i = 0; i < bombs.length; i+=1){
+			if(hero.crashWith(bombs[i])) {
+				if(explodeBool == true){
+					playExplosion();
+				}
+				clearInterval(interval);
+				text.text="You Lose.  Press space to restart.";
+				text.update();
+				restart();
+				return;
+			}
+		}
+		if(hero.x + hero.width >= canvas.width){
+			clearInterval(interval);
+			win.play();
+			text.text="You Win.  Press space to play again.";
+			text.update();
+			restart();
+			return;
+		}
+		clear();
+		if(keys && keys[39]){
+			background.speedX = -1;
+		}
+		else {background.speedX = 0;}
+		
+		
+		
+		background.newPos();
+		background.update();
+		frameNo += 1;
+		spawngroundEnemies();
+		spawnFlyEnemies();
+		spawnBombs();
+		hero.speedX = 0;
+		hero.speedY = 0;
+		if(keys && keys[37]) {moveLeft();}
+		if(keys && keys[39]) {moveRight();}
+		if(keys && keys[38] && hero.y > 217) {jump();}
+		hero.newPos();
+		hero.update();
+		
+		
+    
+	}
+	
+	function jump() {
+		hero.gravitySpeed = -3.85;
+		jumpSound.play();
+		
+	}
+	
+	function moveLeft() {
+		if(hero.x  <= 0){
+			hero.speedX = 0;
+		}
+		else{
+			hero.speedX -= 2;}
+	}
+	
+	function moveRight(){
+		if (hero.x < 240)
+			hero.speedX += 3;
+		else hero.speedX += 2;
+	}
+	
+	function spawngroundEnemies(){
+		if(frameNo == 1 || groundEnemies[countgroundEnemies].x < 850) {
+			if(countgroundEnemies<8){
+				x = 200 + countgroundEnemies*100;
+			}
+			else{x=canvas.width;}
+			var minHeight = 50;
+			var height = Math.floor(Math.random()*70+minHeight);
+			var randomize = Math.random() >= 0.5;
+			if(randomize){
+				groundEnemies.push(new object(48*(height/146), height, "pokerSad.png", x, canvas.height-height, "image" ));
+			}
+			else{
+				groundEnemies.push(new object(48*(height/146), height, "pokerMad.png", x, canvas.height-height, "image" ));
+			}
+			countgroundEnemies ++;
+		}
+		for(i = 0; i < groundEnemies.length; i += 1) {
+			if(keys && keys[39] )
+				groundEnemies[i].x += -1;
+				groundEnemies[i].update();
+		}
+	}
+	
+	function spawnFlyEnemies() {
+	
+		var height = Math.random()*125 + 125;
+		
+		if(frameNo == 1 || flyEnemies[countFlyEnemies].x < 500 ){
+			flyEnemies.push(new object(30, 20, "Fly.png", canvas.width, height, "image"));
+			countFlyEnemies++;
+		}
+		
+		for(i=0; i<flyEnemies.length; i+= 1) {
+			if(keys && keys[39]){
+				flyEnemies[i].x += -1;
+		}
+			flyEnemies[i].x += -2;
+			flyEnemies[i].update();
+		}
+	
+	}
+	
+	function spawnBombs() {
+		var x = Math.random()*960;
+	
+		if(frameNo % 100 == 0){
+			bombs.push(new object(30, 30, "bomb.png", x, 0, "image"));
+		}
+		
+		for(i=0; i<bombs.length; i+= 1){
+			bombs[i].y += 1;
+			if(keys && keys[39]){
+				bombs[i].x += -1;
+			}
+			bombs[i].update();
+		}
+	
+	}
+	
+	function playExplosion(){
+		explosion.play();
+		explodeBool = false;
+	}
+	
+	function restart() {
+		if(keys && keys[32])
+			location.reload();
+	}
+	
+</script>
+</body>
+</html>
